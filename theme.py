@@ -7,3 +7,4 @@ ACCENT_COLOR = "#7289DA" # Periwinkle blue (Borders, Highlights)
 TEXT_COLOR = "#FFFFFF"   # White text
 TEXT_SECONDARY_COLOR = "#B9BBBE" # Light gray text
 HOVER_COLOR = "#5b6eae" # Slightly darker accent for hover states
+HIGHLIGHT_COLOR = "#FFD700" # Gold for search highlights

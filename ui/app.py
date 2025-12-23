@@ -43,7 +43,7 @@ class App(ctk.CTk):
         # Sidebar
         self.sidebar = ctk.CTkFrame(self, width=250, corner_radius=0, fg_color=theme.HEADER_COLOR)
         self.sidebar.grid(row=0, column=0, sticky="nsew")
-        self.sidebar.grid_rowconfigure(2, weight=1) # File list expands
+        self.sidebar.grid_rowconfigure(3, weight=1) # File list expands (Row 3)
 
         # Sidebar Header
         self.logo_label = ctk.CTkLabel(
@@ -52,7 +52,9 @@ class App(ctk.CTk):
             font=("Arial", 24, "bold"),
             text_color=theme.ACCENT_COLOR
         )
-        self.logo_label.grid(row=0, column=0, padx=20, pady=(20, 10))
+        self.logo_label.grid(row=0, column=0, padx=20, pady=(10, 5))
+
+
 
         # Change Folder Button
         self.folder_btn = ctk.CTkButton(
@@ -64,7 +66,12 @@ class App(ctk.CTk):
             border_width=2,
             border_color=theme.ACCENT_COLOR
         )
-        self.folder_btn.grid(row=1, column=0, padx=20, pady=10)
+        self.folder_btn.grid(row=1, column=0, padx=20, pady=5)
+
+        # Search Entry
+        self.search_entry = ctk.CTkEntry(self.sidebar, placeholder_text="Search content...")
+        self.search_entry.grid(row=2, column=0, padx=20, pady=5)
+        self.search_entry.bind("<KeyRelease>", self.search_files)
 
         # File List Scrollable
         self.file_list_frame = ctk.CTkScrollableFrame(
@@ -73,7 +80,7 @@ class App(ctk.CTk):
             label_text="Files Found",
             label_text_color=theme.TEXT_SECONDARY_COLOR
         )
-        self.file_list_frame.grid(row=2, column=0, padx=10, pady=10, sticky="nsew")
+        self.file_list_frame.grid(row=3, column=0, padx=10, pady=10, sticky="nsew")
 
         # Main Content Area
         self.tab_view = ctk.CTkTabview(
@@ -140,12 +147,47 @@ class App(ctk.CTk):
         files = glob.glob(search_pattern, recursive=True)
         self.ini_files = sorted(files)
 
-    def update_file_list(self):
+    def search_files(self, event=None):
+        query = self.search_entry.get().lower()
+        
+        # 1. Update active editor highlights
+        try:
+            current_tab = self.tab_view.get()
+            # The tab contents are inside the frame returned by self.tab_view.tab(name)
+            tab_frame = self.tab_view.tab(current_tab)
+            # Find the EditorView child
+            for child in tab_frame.winfo_children():
+                if isinstance(child, EditorView):
+                    child.highlight_search(query)
+        except:
+            # No tab selected or other error
+            pass
+
+        # 2. Filter file list
+        if not query:
+            self.update_file_list(self.ini_files)
+            return
+            
+        filtered_files = []
+        for fpath in self.ini_files:
+            try:
+                with open(fpath, 'r', encoding='utf-8', errors='ignore') as f:
+                    content = f.read().lower()
+                    if query in content:
+                        filtered_files.append(fpath)
+            except Exception as e:
+                print(f"Error reading {fpath}: {e}")
+                
+        self.update_file_list(filtered_files)
+
+    def update_file_list(self, file_list=None):
         # Clear existing buttons
         for widget in self.file_list_frame.winfo_children():
             widget.destroy()
 
-        for fpath in self.ini_files:
+        files_to_show = file_list if file_list is not None else self.ini_files
+
+        for fpath in files_to_show:
             # Create relative path for display
             try:
                 rel_path = os.path.relpath(fpath, self.current_folder)
@@ -178,7 +220,8 @@ class App(ctk.CTk):
             editor = EditorView(
                 self.tab_view.tab(tab_name), 
                 file_path,
-                close_callback=lambda: self.close_tab(tab_name)
+                close_callback=lambda: self.close_tab(tab_name),
+                search_query=self.search_entry.get()
             )
             editor.pack(fill="both", expand=True)
             
